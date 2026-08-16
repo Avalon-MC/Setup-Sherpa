@@ -18,23 +18,23 @@ design rationale are in `PLAN.md` and `DECISIONS.md`.
 
 ```bash
 dotnet build                          # whole solution
-dotnet test tests/SetupTool.Tests     # full suite (xunit)
-dotnet test tests/SetupTool.Tests --filter "FullyQualifiedName~ClassName"   # one class
-dotnet run --project src/SetupTool.Cli -- run <dir-or-file>   # run the CLI
+dotnet test tests/SetupSherpa.Tests    # full suite (xunit)
+dotnet test tests/SetupSherpa.Tests --filter "FullyQualifiedName~ClassName"   # one class
+dotnet run --project src/SetupSherpa.Cli -- run <dir-or-file>   # run the CLI
 ```
 
-- `SetupTool.slnx` wires `src/SetupTool.Cli`, `src/SetupTool.Core`, `tests/SetupTool.Tests`.
+- `SetupSherpa.slnx` wires `src/SetupSherpa.Cli`, `src/SetupSherpa.Core`, `tests/SetupSherpa.Tests`.
 - The CLI is exercised end-to-end with safe bash-only manifests under `examples/`
-  (e.g. `dotnet run --project src/SetupTool.Cli -- run examples/deps`).
+  (e.g. `dotnet run --project src/SetupSherpa.Cli -- run examples/deps`).
 
 ## Layout
 
-- `src/SetupTool.Core/` — the engine, split by feature folder: `Manifest/`
+- `src/SetupSherpa.Core/` — the engine, split by feature folder: `Manifest/`
   (model + TOML loader), `Planning/` (dependency DAG + topo sort), `Execution/`
   (executors, process runner, privilege, interactive watchdog, orchestrator),
   `State/` (`.sherpa`).
-- `src/SetupTool.Cli/` — thin `Program.cs` (arg parsing, wiring).
-- `tests/SetupTool.Tests/` — xunit. Executor/orchestrator tests use a `FakeRunner`
+- `src/SetupSherpa.Cli/` — thin `Program.cs` (arg parsing, wiring).
+- `tests/SetupSherpa.Tests/` — xunit. Executor/orchestrator tests use a `FakeRunner`
   (implements `IProcessRunner`, records `ProcessSpec`, returns scripted responses)
   and `FakeDownloader` via the `TestContext.Make` helper — **never** hit real docker/apt.
 - `examples/` — reference manifests. `configurations/` is a git submodule (CorgiPhoenixDeploy).
@@ -70,9 +70,9 @@ dotnet run --project src/SetupTool.Cli -- run <dir-or-file>   # run the CLI
   (8s stall / 30s rearm). Interactive steps need a real terminal; they run under
   `script` (a pty) with stdout redirected for relay. Don't change the pty approach
   casually — it's what makes debconf/wizard prompts work.
-- **Binary name mismatch (open)**: the project/assembly is `SetupTool.*` and
-  `setuptool` in some code, but the README and `PrintUsage` say `sherpa`. Aligning
-  the binary name to `sherpa` is deferred to the publish phase. Don't "fix" it piecemeal.
+- **Binary name**: the CLI's assembly is named `sherpa` (via `<AssemblyName>sherpa</AssemblyName>`
+  in `SetupSherpa.Cli.csproj`), so the invoked command is `sherpa` (e.g. `sudo sherpa run <dir>`).
+  The product is Setup-Sherpa; the namespace/dirs are `SetupSherpa.*`.
 - **Don't run real docker/apt on the dev box** — Bazzite/immutable, and the executors
   need a real Debian target (Phase 5). Tests must use the fakes.
 - **`configurations/CorgiPhoenix` is a submodule** — its contents are not part of this
