@@ -1,0 +1,4 @@
+name = "docker"
+[[step]]
+type = "bash"
+script = "echo installing docker"

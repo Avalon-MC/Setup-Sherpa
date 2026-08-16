@@ -1,0 +1,14 @@
+# Safe end-to-end test manifest: bash steps only, no docker/apt (no root needed).
+name = "sanity"
+workdir = "~/setuptool-sanity"
+
+[[step]]
+type = "bash"
+script = """
+mkdir -p ~/setuptool-sanity
+echo "hello from step 1"
+"""
+
+[[step]]
+type = "bash"
+script = "echo \"hello from step 2\"; exit 0"

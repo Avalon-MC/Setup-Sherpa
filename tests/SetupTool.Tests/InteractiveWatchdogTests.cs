@@ -15,7 +15,7 @@ public class InteractiveWatchdogTests
         private readonly Channel<string> _ch = Channel.CreateUnbounded<string>();
 
         public void Append(string s) => _ch.Writer.TryWrite(s);
-        public void Close() => _ch.Writer.TryComplete();
+        public void EndOfStream() => _ch.Writer.TryComplete();
 
         public override async Task<int> ReadAsync(char[] buffer, int index, int count)
         {
@@ -41,7 +41,7 @@ public class InteractiveWatchdogTests
         try
         {
             var watch = watchdog.RunAndWatchAsync(reader, default);
-            reader.Close(); // EOF -> watch should return
+            reader.EndOfStream(); // EOF -> watch should return
             await watch;
         }
         finally
@@ -69,7 +69,7 @@ public class InteractiveWatchdogTests
             await Task.Delay(500);
             reader.Append("late output\n");
             await Task.Delay(200);
-            reader.Close();
+            reader.EndOfStream();
             await watch;
         }
         finally
@@ -99,7 +99,7 @@ public class InteractiveWatchdogTests
                 await Task.Delay(40);
                 reader.Append($"tick{i} ");
             }
-            reader.Close();
+            reader.EndOfStream();
             await watch;
         }
         finally

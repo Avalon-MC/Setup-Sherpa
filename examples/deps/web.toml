@@ -1,0 +1,5 @@
+name = "web"
+depends = ["portainer"]
+[[step]]
+type = "bash"
+script = "echo installing web"

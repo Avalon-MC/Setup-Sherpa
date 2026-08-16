@@ -1,0 +1,14 @@
+# Tests the stop-on-failure path.
+name = "failtest"
+
+[[step]]
+type = "bash"
+script = "echo before failure"
+
+[[step]]
+type = "bash"
+script = "echo this fails; exit 7"
+
+[[step]]
+type = "bash"
+script = "echo should not run"
