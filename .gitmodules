@@ -1,0 +1,3 @@
+[submodule "configurations/CorgiPhoenix"]
+	path = configurations/CorgiPhoenix
+	url = git@github.com:Avalon-MC/CorgiPhoenixDeploy.git
