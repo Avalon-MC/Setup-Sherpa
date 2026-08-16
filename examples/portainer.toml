@@ -1,10 +1,14 @@
 # ~/setup/portainer.toml
 #
 # Installs Docker from the official repo, then Portainer as a compose project.
-# This is the full "normal user" shape: depends, repos, apt, compose, bash.
+# Shows: depends, repos, apt, compose (via URL), and a bash step running under
+# a manifest-level workdir default.
 
 name = "portainer"
 depends = ["docker"]
+
+# Manifest-level default: this whole unit's bash steps run under ~/apps/portainer
+workdir = "~/apps/portainer"
 
 # --- Docker engine, from the official repo -----------------------------------
 
@@ -19,19 +23,18 @@ type = "apt"
 update = true
 packages = ["docker-ce", "docker-ce-cli", "docker-compose-plugin"]
 
-# --- Portainer, as a compose project -----------------------------------------
+# --- Portainer, as a compose project fetched fresh from a URL -----------------
 
 [[step]]
 type = "compose"
 project = "portainer"
-file = "compose/portainer.yml"
+file = "@url:https://downloads.portainer.io/ce-sts/portainer-compose.yaml"
 
 # --- A one-off per-user tweak -------------------------------------------------
-# Defaults to running as YOU (not root) because it's `bash`.
+# Runs as YOU (bash defaults to user), under the manifest workdir (~/apps/portainer)
 
 [[step]]
 type = "bash"
 script = """
-mkdir -p ~/apps/portainer
-chmod 700 ~/apps/portainer
+chmod 700 .
 """

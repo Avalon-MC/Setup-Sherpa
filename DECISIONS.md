@@ -65,11 +65,11 @@ authoritative record of *why*.
 
 ## D5 — Passthrough command model with a deterministic tokenizer
 
-- **Choice:** `docker-run`, `docker-volume`, and `compose` take a raw `command`
-  string, tokenized by a deterministic C# tokenizer — no shell expansion, no
-  globbing, no `$`, no shell operators. The author writes the docker invocation
-  they already know, every flag is supported (no schema ceiling), and identical
-  input yields identical args every run.
+- **Choice:** `docker-run` and `docker-volume` take a raw `command` string,
+  tokenized by a deterministic C# tokenizer — no shell expansion, no globbing,
+  no `$`, no shell operators. The author writes the docker invocation they
+  already know, every flag is supported (no schema ceiling), and identical input
+  yields identical args every run.
 - **Why raw command, not decomposed fields:** a field-by-field schema forces the
   author to re-type the invocation in a different structure than docker itself,
   and any flag not anticipated (`--network`, `--env-file`, `--mount`, health
@@ -79,13 +79,43 @@ authoritative record of *why*.
   resolves against run-time environment, and `;`/`&&`/`|` are live. A
   deterministic tokenizer splits on whitespace + quotes only; everything else is
   literal. Same manifest in → same bytes to docker out, every run.
-- **Line between step types:** shell-adjacent types (`docker-run`,
-  `docker-volume`, `compose`) are quoted-literal via the tokenizer; `bash` is a
-  real script and goes through a shell. Consequence: no `$HOME` / `$(...)` in
-  docker commands — an explicit variable mechanism may come later.
+- **Line between step types:** `docker-run` and `docker-volume` are
+  quoted-literal via the tokenizer; `compose` is structured (`project` + `file`);
+  `bash` is a real script and goes through a shell. Consequence: no `$HOME` /
+  `$(...)` in docker commands — an explicit variable mechanism may come later.
 - **Volume creation** is its own step type `docker-volume`, not a field on
   `docker-run`. Docker auto-creates named volumes on first reference, so
   `docker-volume create` is only needed when creation must be explicit.
+
+## D6 — `workdir` field (per-step, with a manifest-level default)
+
+- **Choice:** a `workdir` field on each step, plus a manifest-level `workdir`
+  default that steps override. Unset → current directory (no change).
+- **Resolution rules:** `~/...` → the step's effective user's home (user steps →
+  the invoking user via `SUDO_USER`; root steps → `/root`). Absolute `/...` →
+  used as-is, `mkdir -p` on demand. Relative `./...` → resolves against the
+  **manifest's directory**, not the process cwd (reproducibility — the manifest
+  is the source of truth). The tool resolves `~` itself, not via a shell.
+- **Create-on-demand ownership:** a created workdir is owned by the step's
+  effective user, so a `user` step creating `~/apps/portainer` owns it and later
+  `user` steps can write into it (avoids root-owned dirs in a user's home).
+  Consequence: the drop-to-user happens before `mkdir` for user steps.
+- **Why:** a normal user's setup is often "this whole unit runs under
+  `~/apps/...`" — the manifest-level default captures that, per-step override
+  handles the occasional exception.
+
+## D7 — Compose `file` accepts a URL
+
+- **Choice:** a compose step's `file` may be `@url:https://...`; the tool
+  downloads it to a tool-managed temp location, then runs
+  `docker compose -f <temp>`.
+- **Fresh-to-temp each run, not cached:** a setup tool installs the *current*
+  thing; a cached compose could be stale on a re-run months later. Reproducibility
+  argues for fresh.
+- **Supply chain:** fetching + running a remote compose pulls images and stands
+  up containers — a trust decision. Optional `sha256` verification is deferred
+  to keep v1 lean; the canonical use (Portainer's official URL) is a trusted
+  source.
 
 ## Open / deferred
 

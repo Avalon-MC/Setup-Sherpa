@@ -39,10 +39,22 @@ out order, privilege, and when to hand you the keyboard.
 | `compose` | root | Deploy a compose project via `docker compose` |
 | `bash` | user | Run a custom bash block (override to root if needed) |
 
-**Passthrough command model:** `docker-run`, `docker-volume`, and `compose` take a
-raw `command` string tokenized by a deterministic C# tokenizer — no shell
-expansion, no globbing, no `$`. Predictable + reproducible (see DECISIONS.md D5).
-`bash` goes through a shell (it's a script).
+**Passthrough command model:** `docker-run` and `docker-volume` take a raw
+`command` string tokenized by a deterministic C# tokenizer — no shell
+expansion, no globbing, no `$`. Predictable + reproducible (see DECISIONS.md
+D5). `compose` is structured (`project` + `file`); `bash` goes through a shell
+(it's a script).
+
+**`workdir` (per-step, with a manifest-level default that steps override):**
+sets the working directory a step runs in. `~/...` resolves to the step's
+effective user's home (user steps → invoking user, root steps → `/root`);
+absolute paths are `mkdir -p`'d on demand and owned by the step's effective
+user; relative paths resolve against the manifest's directory. Unset → current
+directory (see DECISIONS.md D6).
+
+**Compose `file` can be a URL:** `file = "@url:https://..."` downloads the
+compose file to a tool-managed temp location, fresh each run, then runs it (see
+DECISIONS.md D7).
 
 ## Out of scope (v1)
 
