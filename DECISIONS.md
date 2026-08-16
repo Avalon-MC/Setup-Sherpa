@@ -63,6 +63,30 @@ authoritative record of *why*.
 - **Rejected:** YAML (above), JSONC (`System.Text.Json` is rock-solid but
   quote-heavy and no native multi-line strings for bash blocks).
 
+## D5 — Passthrough command model with a deterministic tokenizer
+
+- **Choice:** `docker-run`, `docker-volume`, and `compose` take a raw `command`
+  string, tokenized by a deterministic C# tokenizer — no shell expansion, no
+  globbing, no `$`, no shell operators. The author writes the docker invocation
+  they already know, every flag is supported (no schema ceiling), and identical
+  input yields identical args every run.
+- **Why raw command, not decomposed fields:** a field-by-field schema forces the
+  author to re-type the invocation in a different structure than docker itself,
+  and any flag not anticipated (`--network`, `--env-file`, `--mount`, health
+  checks) silently becomes unsupported. Passthrough removes the ceiling.
+- **Why a C# tokenizer, not `bash -c`:** `bash -c` is a reproducibility
+  liability for a setup tool — globbing expands `*` against run-time cwd, `$`
+  resolves against run-time environment, and `;`/`&&`/`|` are live. A
+  deterministic tokenizer splits on whitespace + quotes only; everything else is
+  literal. Same manifest in → same bytes to docker out, every run.
+- **Line between step types:** shell-adjacent types (`docker-run`,
+  `docker-volume`, `compose`) are quoted-literal via the tokenizer; `bash` is a
+  real script and goes through a shell. Consequence: no `$HOME` / `$(...)` in
+  docker commands — an explicit variable mechanism may come later.
+- **Volume creation** is its own step type `docker-volume`, not a field on
+  `docker-run`. Docker auto-creates named volumes on first reference, so
+  `docker-volume create` is only needed when creation must be explicit.
+
 ## Open / deferred
 
 - **`only_if` hook for bash idempotency** — bash steps have no automatic

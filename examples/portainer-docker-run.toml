@@ -1,0 +1,29 @@
+# ~/setup/portainer-docker-run.toml
+#
+# Same result as portainer.toml, but Portainer deployed via `docker run`
+# instead of compose. Docker installed via repo + apt, then the volume and
+# container as passthrough command steps.
+
+name = "portainer-docker-run"
+depends = ["docker"]
+
+[[step]]
+type = "repo"
+source = "https://download.docker.com/linux/debian"
+keyring = "https://download.docker.com/linux/debian/gpg"
+components = ["stable"]
+
+[[step]]
+type = "apt"
+update = true
+packages = ["docker-ce", "docker-ce-cli", "docker-compose-plugin"]
+
+# Portainer's data volume (custom step type)
+[[step]]
+type = "docker-volume"
+command = "create portainer_data"
+
+# Portainer container, as a raw docker run command
+[[step]]
+type = "docker-run"
+command = "-d -p 8000:8000 -p 9443:9443 --name portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce:lts"

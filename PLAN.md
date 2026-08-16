@@ -34,9 +34,15 @@ out order, privilege, and when to hand you the keyboard.
 |---|---|---|
 | `apt` | root | Install packages via apt-get; optional `update` |
 | `repo` | root | Add a custom Debian repository (`.sources` file + gpg key) |
-| `docker-run` | root | Deploy a container via `docker run` |
+| `docker-run` | root | Deploy a container via `docker run` (raw `command` string) |
+| `docker-volume` | root | Create a docker volume (raw `command` string) |
 | `compose` | root | Deploy a compose project via `docker compose` |
 | `bash` | user | Run a custom bash block (override to root if needed) |
+
+**Passthrough command model:** `docker-run`, `docker-volume`, and `compose` take a
+raw `command` string tokenized by a deterministic C# tokenizer — no shell
+expansion, no globbing, no `$`. Predictable + reproducible (see DECISIONS.md D5).
+`bash` goes through a shell (it's a script).
 
 ## Out of scope (v1)
 
