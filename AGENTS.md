@@ -47,8 +47,12 @@ dotnet run --project src/SetupTool.Cli -- run <dir-or-file>   # run the CLI
 - **Errors**: throw typed exceptions — `ManifestException` (load/schema),
   `PlanException` (dependency graph), `StepFailedException` (a step's process exited nonzero).
   Catch them in `Program.Main`; print `✗ <message>`, return nonzero.
-- **Manifest schema**: `[[step]]` with a `type` (apt, repo, docker-run, docker-volume,
-  compose, bash) plus `name`, `depends`, `workdir`. `docker-run`/`docker-volume` take a
+- **Manifest schema**: top-level `name` (required, unique), `depends`, `workdir`,
+  `installOrder` (-100..+100, higher installs closer to first, never overrides a
+  dependency), then `[[step]]` with a `type` (apt, repo, docker-run, docker-volume,
+  compose, bash). **`name` may differ from the filename** — dependencies resolve by
+  the manifest's `name` field (scanned from every .toml in the directory), not by
+  filename. `docker-run`/`docker-volume` take a
   raw `command` string tokenized by `CommandTokenizer` (no shell expansion — D5).
 - **Step types** use `StepTypes.TryParse` (kebab-case names like `docker-run`; a plain
   `Enum.TryParse` fails on the hyphen).
