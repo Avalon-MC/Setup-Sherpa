@@ -41,19 +41,41 @@ public static class Program
         }
     }
 
-    private static async Task<int> RunAsync(string[] paths)
+    private static async Task<int> RunAsync(string[] targets)
     {
-        if (paths.Length == 0)
+        if (targets.Length == 0)
         {
-            Console.Error.WriteLine("  ✗ run requires at least one manifest path.");
+            Console.Error.WriteLine("  ✗ run requires a manifest directory or file.");
             PrintUsage();
             return 2;
         }
 
+        // Expand each target: a directory yields all its .toml files; a file is used as-is.
+        var manifestPaths = new List<string>();
+        foreach (var t in targets)
+        {
+            if (Directory.Exists(t))
+            {
+                var files = Directory.GetFiles(t, "*.toml").OrderBy(f => f, StringComparer.Ordinal);
+                manifestPaths.AddRange(files);
+            }
+            else if (File.Exists(t))
+            {
+                manifestPaths.Add(t);
+            }
+            else
+            {
+                throw new ManifestException($"Target '{t}' is neither a directory nor a manifest file.");
+            }
+        }
+
+        if (manifestPaths.Count == 0)
+            throw new ManifestException($"No .toml manifests found in the given target(s).");
+
         // Load the requested manifests.
         var byName = new Dictionary<string, Manifest>(StringComparer.Ordinal);
         var rootManifests = new List<Manifest>();
-        foreach (var p in paths)
+        foreach (var p in manifestPaths)
         {
             var m = ManifestLoader.Load(p);
             if (!byName.TryAdd(m.Name, m))
@@ -139,12 +161,16 @@ public static class Program
     private static void PrintUsage()
     {
         Console.WriteLine("""
-            SetupTool — install a set of TOML manifests in dependency order.
+            Setup-Sherpa — install a set of TOML manifests in dependency order.
 
             Usage:
-              setuptool run <manifest.toml> [<manifest2.toml> ...]
-                  Load manifests (plus their dependencies), plan install order,
-                  and execute steps. Run via sudo so user steps can drop privileges.
+              sherpa run <directory> [<directory2> ...]
+                  Load every .toml manifest in the directory (plus their
+                  dependencies), plan install order, and execute steps.
+                  Run via sudo so user steps can drop privileges.
+
+              sherpa run <manifest.toml> [<manifest2.toml> ...]
+                  Load specific manifest files instead of a whole directory.
             """);
     }
 }
