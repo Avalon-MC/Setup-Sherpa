@@ -87,10 +87,12 @@ public sealed class ProcessRunner : IProcessRunner
 
     /// <summary>
     /// Runs an interactive step under <c>script</c> so it gets a real pty.
-    /// The child inherits the tool's terminal for input/output; the user drives
-    /// it directly. (Auto-detection / takeover is layered on in Phase 4.)
+    /// The child's stdin is inherited from the tool, so the user's keyboard is
+    /// already attached and they can type at it directly. stdout/stderr are
+    /// redirected so the <see cref="InteractiveWatchdog"/> can relay them and
+    /// offer a takeover hint when the step appears stalled (D3).
     /// </summary>
-    private Task<ProcessResult> RunInteractiveAsync(ProcessSpec spec, bool drop, CancellationToken ct)
+    private async Task<ProcessResult> RunInteractiveAsync(ProcessSpec spec, bool drop, CancellationToken ct)
     {
         // Build the argv, then serialize to a shell-safe command string for
         // `script -c`. `script` hands the string to /bin/sh -c.
@@ -117,16 +119,27 @@ public sealed class ProcessRunner : IProcessRunner
             Arguments = $"-qefc \"{commandLine}\" /dev/null",
             WorkingDirectory = spec.WorkingDirectory,
             UseShellExecute = false,
+            // Keyboard stays connected to the child through `script`'s pty.
             RedirectStandardInput = false,
-            RedirectStandardOutput = false,
-            RedirectStandardError = false,
+            // Capture output so we can relay + watch for a stall.
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
         };
         ApplyEnvironment(psi, spec);
 
         using var proc = new Process { StartInfo = psi };
         proc.Start();
+
+        var watchdog = new InteractiveWatchdog(
+            stallThreshold: TimeSpan.FromSeconds(8),
+            rearmDelay: TimeSpan.FromSeconds(30));
+        await watchdog.RunAndWatchAsync(proc.StandardOutput, ct).ConfigureAwait(false);
+        // Drain stderr (script usually merges; keep it harmless).
+        var stderr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
+        if (stderr.Length > 0)
+            Console.Write(stderr);
         proc.WaitForExit();
-        return Task.FromResult(new ProcessResult { ExitCode = proc.ExitCode });
+        return new ProcessResult { ExitCode = proc.ExitCode };
     }
 
     /// <summary>
