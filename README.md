@@ -1,8 +1,8 @@
 # Setup-Sherpa
 
-> Declarative Debian setup: write TOML manifests, Sherpa installs them in the right order, drops privileges per step, and hands over when an install needs you.
+> Setup-Sherpa installs software on a fresh Linux system from simple TOML manifests — it works out the right install order, runs each step with the least privilege it needs, and hands over to you when an install needs a human.
 
-A small CLI that installs a set of **installation manifests** in dependency order, with stepped execution, per-step privilege reduction, and real interactive handover. Aimed at a normal user setting up a Debian box in an afternoon — not a configuration-management system (not Ansible).
+A small CLI that installs a set of **installation manifests** in dependency order, with stepped execution, per-step privilege reduction, and real interactive handover. Aimed at a normal user setting up a fresh Linux box in an afternoon (Debian-based systems only for now) — not a configuration-management system (not Ansible).
 
 ## Why
 
@@ -53,7 +53,7 @@ chmod 700 .
 | Type | Privilege default | Does |
 |---|---|---|
 | `apt` | root | Install packages via apt-get; optional `update` |
-| `repo` | root | Add a custom Debian repository (`.sources` file + gpg key) |
+| `repo` | root | Add a custom package repository (`.sources` file + gpg key) |
 | `docker-run` | root | Deploy a container via `docker run` (raw `command` string) |
 | `docker-volume` | root | Create a docker volume (raw `command` string) |
 | `compose` | root | Deploy a compose project via `docker compose` |
@@ -70,11 +70,6 @@ chmod 700 .
 ## Design decisions
 
 The full rationale for every choice (stack, privilege model, interactive handling, TOML format, passthrough commands, `workdir`, compose URLs) is in [`DECISIONS.md`](DECISIONS.md). The master plan is in [`PLAN.md`](PLAN.md).
-
-## Roadmap
-
-- **Phase 5 (next)** — self-contained single-file publish; verify on a clean Debian box.
-- **Phase 6 (later)** — Portainer API deployment as a second `IComposeDeployer` implementation (the seam is already in place; manifests don't change).
 
 ## License
 
