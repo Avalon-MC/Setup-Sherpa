@@ -1,0 +1,17 @@
+# ~/setup/some-wizard.toml
+#
+# Shows an interactive step. The tool hands the terminal over for this step,
+# you drive the wizard, and when the wizard process exits the tool continues
+# on its own.
+
+name = "some-wizard"
+depends = ["docker"]
+
+[[step]]
+type = "bash"
+privilege = "user"
+interactive = true
+script = """
+cd ~/Downloads
+./installer.run
+"""

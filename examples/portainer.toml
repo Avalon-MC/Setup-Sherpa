@@ -1,0 +1,37 @@
+# ~/setup/portainer.toml
+#
+# Installs Docker from the official repo, then Portainer as a compose project.
+# This is the full "normal user" shape: depends, repos, apt, compose, bash.
+
+name = "portainer"
+depends = ["docker"]
+
+# --- Docker engine, from the official repo -----------------------------------
+
+[[step]]
+type = "repo"
+source = "https://download.docker.com/linux/debian"
+keyring = "https://download.docker.com/linux/debian/gpg"
+components = ["stable"]
+
+[[step]]
+type = "apt"
+update = true
+packages = ["docker-ce", "docker-ce-cli", "docker-compose-plugin"]
+
+# --- Portainer, as a compose project -----------------------------------------
+
+[[step]]
+type = "compose"
+project = "portainer"
+file = "compose/portainer.yml"
+
+# --- A one-off per-user tweak -------------------------------------------------
+# Defaults to running as YOU (not root) because it's `bash`.
+
+[[step]]
+type = "bash"
+script = """
+mkdir -p ~/apps/portainer
+chmod 700 ~/apps/portainer
+"""
