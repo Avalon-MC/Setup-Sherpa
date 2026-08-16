@@ -73,3 +73,37 @@ The full rationale for every choice (stack, privilege model, interactive handlin
 ## License
 
 MIT.
+
+## Manifest schema
+
+A manifest is a single `.toml` file. Its `name` may differ from the filename; `depends` resolves by the `name` field.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `name` | string | yes | Unique; other manifests reference it via `depends` |
+| `depends` | array of strings | no | Manifests that must install first |
+| `workdir` | string | no | Default working dir for steps; resolved per the step `workdir` rules |
+| `installOrder` | int (-100..+100) | no | Higher installs closer to first; never overrides a `depends` edge |
+| `[[step]]` | array of tables | yes (≥1) | The install steps, in order |
+
+## Step schema
+
+Each `[[step]]` has a shared core plus type-specific fields. The `type` is always required.
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `type` | string | yes | `apt`, `repo`, `docker-run`, `docker-volume`, `compose`, `bash` |
+| `privilege` | string | no | `root` or `user`. Defaults per type: `bash` → `user`; all others → `root` |
+| `workdir` | string | no | Overrides the manifest `workdir`. `~/...` → user's home; absolute → `mkdir -p` on demand; relative → resolved against the manifest's directory |
+| `interactive` | bool | no | Declares the step needs a human at the terminal |
+
+**Per-type fields:**
+
+| `type` | Fields |
+|---|---|
+| `apt` | `packages` (array, required), `update` (bool) |
+| `repo` | `source` (string, required), `keyring` (string), `components` (array, default `["stable"]`), `repo_name` (string) |
+| `docker-run` | `command` (string, required) — raw docker args, no shell expansion |
+| `docker-volume` | `command` (string, required) — raw docker args |
+| `compose` | `project` (string, required), `file` (string, required — path or `@url:https://...`) |
+| `bash` | `script` (string, required) |
