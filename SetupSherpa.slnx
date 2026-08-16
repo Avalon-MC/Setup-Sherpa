@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SetupSherpa.Cli/SetupSherpa.Cli.csproj" />
+    <Project Path="src/SetupSherpa.Core/SetupSherpa.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SetupSherpa.Tests/SetupSherpa.Tests.csproj" />
+  </Folder>
+</Solution>
