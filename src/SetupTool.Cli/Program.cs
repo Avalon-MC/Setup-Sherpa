@@ -149,7 +149,9 @@ public static class Program
 
     /// <summary>
     /// Recursively loads dependencies referenced by the root manifests and each
-    /// discovered dependency, looking for <c>{name}.toml</c> in the same directory.
+    /// discovered dependency. Resolution is by the manifest's <c>name</c> field
+    /// (which may differ from its filename): every .toml in the same directory
+    /// is loaded and matched on its <c>name</c>.
     /// </summary>
     private static void LoadDependencies(List<Manifest> roots, Dictionary<string, Manifest> byName)
     {
@@ -163,13 +165,19 @@ public static class Program
                     continue;
 
                 var dir = Path.GetDirectoryName(m.SourcePath) ?? ".";
-                var candidate = Path.Combine(dir, dep + ".toml");
-                if (!File.Exists(candidate))
+                if (!Directory.Exists(dir))
                     continue; // planner will error if still missing
 
-                var depManifest = ManifestLoader.Load(candidate);
-                if (byName.TryAdd(depManifest.Name, depManifest))
-                    queue.Enqueue(depManifest);
+                // Match by the manifest's `name` field, not the filename.
+                foreach (var candidate in Directory.GetFiles(dir, "*.toml"))
+                {
+                    var depManifest = ManifestLoader.Load(candidate);
+                    if (depManifest.Name == dep && byName.TryAdd(depManifest.Name, depManifest))
+                    {
+                        queue.Enqueue(depManifest);
+                        break;
+                    }
+                }
             }
         }
     }

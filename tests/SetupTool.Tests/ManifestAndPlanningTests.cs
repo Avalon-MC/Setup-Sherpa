@@ -143,6 +143,50 @@ public class ManifestLoaderTests
         var ex = Assert.Throws<ManifestException>(() => ManifestLoader.Load(p));
         Assert.Contains("packages", ex.Message);
     }
+
+    [Fact]
+    public void Reads_InstallOrder()
+    {
+        var p = Write("m.toml", """
+            name = "x"
+            installOrder = 42
+            [[step]]
+            type = "bash"
+            script = "echo hi"
+            """);
+        var m = ManifestLoader.Load(p);
+        Assert.Equal(42, m.InstallOrder);
+    }
+
+    [Fact]
+    public void InstallOrder_DefaultsToZero()
+    {
+        var p = Write("m.toml", """
+            name = "x"
+            [[step]]
+            type = "bash"
+            script = "echo hi"
+            """);
+        var m = ManifestLoader.Load(p);
+        Assert.Equal(0, m.InstallOrder);
+    }
+
+    [Theory]
+    [InlineData("-101")]
+    [InlineData("101")]
+    [InlineData("999")]
+    public void Rejects_InstallOrder_OutOfRange(string value)
+    {
+        var p = Write("bad.toml", $"""
+            name = "x"
+            installOrder = {value}
+            [[step]]
+            type = "bash"
+            script = "echo hi"
+            """);
+        var ex = Assert.Throws<ManifestException>(() => ManifestLoader.Load(p));
+        Assert.Contains("installOrder", ex.Message);
+    }
 }
 
 public class DependencyPlannerTests
@@ -152,6 +196,14 @@ public class DependencyPlannerTests
         Name = name,
         Depends = deps,
         Steps = [],
+    };
+
+    private static Manifest MakeOrdered(string name, int installOrder, params string[] deps) => new()
+    {
+        Name = name,
+        Depends = deps,
+        Steps = [],
+        InstallOrder = installOrder,
     };
 
     [Fact]
@@ -202,5 +254,45 @@ public class DependencyPlannerTests
         };
         var ex = Assert.Throws<PlanException>(() => new DependencyPlanner().Plan(manifests));
         Assert.Contains("cycle", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void HigherInstallOrder_InstallsFirst_AmongIndependent()
+    {
+        var manifests = new Dictionary<string, Manifest>
+        {
+            ["low"] = MakeOrdered("low", -50),
+            ["mid"] = MakeOrdered("mid", 0),
+            ["high"] = MakeOrdered("high", 80),
+        };
+        var order = new DependencyPlanner().Plan(manifests);
+        Assert.Equal(["high", "mid", "low"], order.Select(m => m.Name).ToArray());
+    }
+
+    [Fact]
+    public void InstallOrder_NeverOverridesDependencies()
+    {
+        // app has a HIGH installOrder, but depends on base with a LOW one.
+        // base must still install first because of the dependency.
+        var manifests = new Dictionary<string, Manifest>
+        {
+            ["base"] = MakeOrdered("base", -100),
+            ["app"] = MakeOrdered("app", 100, "base"),
+        };
+        var order = new DependencyPlanner().Plan(manifests);
+        Assert.Equal(["base", "app"], order.Select(m => m.Name).ToArray());
+    }
+
+    [Fact]
+    public void EqualInstallOrder_FallsBackToAlphabetical()
+    {
+        var manifests = new Dictionary<string, Manifest>
+        {
+            ["zeta"] = MakeOrdered("zeta", 5),
+            ["alpha"] = MakeOrdered("alpha", 5),
+            ["beta"] = MakeOrdered("beta", 5),
+        };
+        var order = new DependencyPlanner().Plan(manifests);
+        Assert.Equal(["alpha", "beta", "zeta"], order.Select(m => m.Name).ToArray());
     }
 }

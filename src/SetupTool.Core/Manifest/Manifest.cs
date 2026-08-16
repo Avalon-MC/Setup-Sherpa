@@ -19,6 +19,14 @@ public sealed class Manifest
     /// </summary>
     public string? WorkDir { get; set; }
 
+    /// <summary>
+    /// Installation preference, -100..+100. Higher installs closer to first.
+    /// Only affects ordering among manifests whose dependencies are already
+    /// satisfied; it never overrides a dependency (a manifest still installs
+    /// after its dependencies). Default 0.
+    /// </summary>
+    public int InstallOrder { get; set; }
+
     /// <summary>The install steps, in order.</summary>
     public IReadOnlyList<Step> Steps { get; set; } = [];
 

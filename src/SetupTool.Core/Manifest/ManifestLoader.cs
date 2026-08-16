@@ -63,6 +63,20 @@ public static class ManifestLoader
             manifest.WorkDir = workdir;
         }
 
+        if (table.TryGetValue("installOrder", out var ioValue))
+        {
+            if (ioValue is long l)
+            {
+                if (l is < -100 or > 100)
+                    throw new ManifestException($"Manifest '{full}' 'installOrder' must be within -100..+100 (got {l}).");
+                manifest.InstallOrder = (int)l;
+            }
+            else
+            {
+                throw new ManifestException($"Manifest '{full}' 'installOrder' must be an integer -100..+100.");
+            }
+        }
+
         if (TryStringArray(table, "depends", out var depends))
         {
             manifest.Depends = depends;

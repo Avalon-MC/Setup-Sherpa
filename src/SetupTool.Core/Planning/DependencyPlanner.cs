@@ -47,12 +47,14 @@ public sealed class DependencyPlanner
 
         // Kahn's algorithm (iterative, no recursion). A node is ready once all
         // of its dependencies are processed, i.e. in-degree (deps remaining) hits 0.
+        // Within the ready set, higher installOrder installs closer to first;
+        // alphabetical name breaks ties. Priority = (-installOrder, name) so the
+        // default ascending tuple compare yields higher order, then lower name.
         var remaining = deps.ToDictionary(kv => kv.Key, kv => kv.Value.Count, StringComparer.Ordinal);
-        var ready = new PriorityQueue<string, string>(Comparer<string>.Create(
-            (a, b) => string.CompareOrdinal(a, b)));
+        var ready = new PriorityQueue<string, (int negOrder, string name)>();
         foreach (var (name, deg) in remaining)
             if (deg == 0)
-                ready.Enqueue(name, name);
+                ready.Enqueue(name, (-manifests[name].InstallOrder, name));
 
         var order = new List<Manifest>();
         while (ready.Count > 0)
@@ -62,7 +64,7 @@ public sealed class DependencyPlanner
             foreach (var dependent in dependents[name])
             {
                 if (--remaining[dependent] == 0)
-                    ready.Enqueue(dependent, dependent);
+                    ready.Enqueue(dependent, (-manifests[dependent].InstallOrder, dependent));
             }
         }
 
