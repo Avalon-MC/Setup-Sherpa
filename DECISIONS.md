@@ -1,6 +1,6 @@
 # Decisions
 
-Locked design decisions for the Linux Fresh-Install Setup Tool, with rationale.
+Locked design decisions for Setup-Sherpa, with rationale.
 Decisions are made with the user in conversation and recorded here as the
 authoritative record of *why*.
 

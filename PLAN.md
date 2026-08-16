@@ -1,4 +1,4 @@
-# Linux Fresh-Install Setup Tool
+# Setup-Sherpa
 
 A small CLI that installs a set of **installation manifests** in dependency order,
 with stepped execution, per-step privilege reduction, and real interactive
