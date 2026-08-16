@@ -1,6 +1,7 @@
 ﻿using SetupTool.Core.Execution;
 using SetupTool.Core.Manifest;
 using SetupTool.Core.Planning;
+using SetupTool.Core.State;
 
 namespace SetupTool.Cli;
 
@@ -112,7 +113,22 @@ public static class Program
             new ComposeExecutor(new LocalComposeDeployer()),
             new BashExecutor(),
         };
-        var orchestrator = new Orchestrator(executors, runner, new HttpDownloader(), invoking);
+
+        // .sherpa state lives in the target directory (the first directory target,
+        // or the directory of the first file target). It tracks which manifests
+        // are already installed so re-runs skip them.
+        var stateDir = targets
+            .Select(t => Directory.Exists(t) ? t : Path.GetDirectoryName(Path.GetFullPath(t)))
+            .FirstOrDefault(d => d is not null);
+        SherpaState? state = null;
+        string? statePath = null;
+        if (stateDir is not null)
+        {
+            statePath = Path.Combine(stateDir, ".sherpa");
+            state = SherpaState.Load(statePath);
+        }
+
+        var orchestrator = new Orchestrator(executors, runner, new HttpDownloader(), invoking, state, statePath);
 
         Console.WriteLine($"Plan: {string.Join(" → ", ordered.Select(m => m.Name))}");
         Console.WriteLine();

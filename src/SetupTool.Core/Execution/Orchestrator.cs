@@ -2,6 +2,7 @@ namespace SetupTool.Core.Execution;
 
 using SetupTool.Core.Manifest;
 using SetupTool.Core.Planning;
+using SetupTool.Core.State;
 
 /// <summary>The outcome of running the whole ordered set of manifests.</summary>
 public sealed class RunReport
@@ -38,17 +39,23 @@ public sealed class Orchestrator
     private readonly IProcessRunner _runner;
     private readonly IHttpDownloader _downloader;
     private readonly Identity? _invoking;
+    private readonly SherpaState? _state;
+    private readonly string? _statePath;
 
     public Orchestrator(
         IEnumerable<IStepExecutor> executors,
         IProcessRunner runner,
         IHttpDownloader downloader,
-        Identity? invoking)
+        Identity? invoking,
+        SherpaState? state = null,
+        string? statePath = null)
     {
         _executors = executors.ToDictionary(e => e.Type);
         _runner = runner;
         _downloader = downloader;
         _invoking = invoking;
+        _state = state;
+        _statePath = statePath;
     }
 
     public async Task<RunReport> RunAsync(IReadOnlyList<Manifest> ordered, CancellationToken ct = default)
@@ -60,6 +67,21 @@ public sealed class Orchestrator
         foreach (var manifest in ordered)
         {
             var manifestDir = Path.GetDirectoryName(manifest.SourcePath) ?? ".";
+
+            // .sherpa: skip a manifest that's already marked installed.
+            if (_state is not null && _state.IsInstalled(manifest.Name))
+            {
+                Console.WriteLine($"  · {manifest.Name}: already installed (in .sherpa), skipping.");
+                reports.Add(new ManifestStepReport
+                {
+                    Manifest = manifest.Name,
+                    StepType = "manifest",
+                    StepNumber = ++stepNumber,
+                    Outcome = StepOutcome.Skipped,
+                    Note = "already installed (in .sherpa)",
+                });
+                continue;
+            }
 
             foreach (var step in manifest.Steps)
             {
@@ -127,6 +149,14 @@ public sealed class Orchestrator
                     Note = result.Note,
                     Warnings = ctx.Warnings,
                 });
+            }
+
+            // All steps of this manifest succeeded — mark it installed in .sherpa.
+            if (_state is not null)
+            {
+                _state.MarkInstalled(manifest.Name);
+                if (_statePath is not null)
+                    _state.Save(_statePath);
             }
         }
 
