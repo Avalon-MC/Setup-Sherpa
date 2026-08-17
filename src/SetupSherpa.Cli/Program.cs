@@ -73,6 +73,8 @@ public static class Program
             new DockerVolumeExecutor(),
             new ComposeExecutor(new LocalComposeDeployer()),
             new BashExecutor(),
+            new WaitExecutor(),
+            new EnvInputExecutor(),
         };
 
         // .sherpa state lives in the target directory (the first directory target,

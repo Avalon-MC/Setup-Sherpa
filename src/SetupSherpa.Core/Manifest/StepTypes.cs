@@ -16,6 +16,8 @@ public static class StepTypes
             ["docker-volume"] = StepType.DockerVolume,
             ["compose"] = StepType.Compose,
             ["bash"] = StepType.Bash,
+            ["wait"] = StepType.Wait,
+            ["env-input"] = StepType.EnvInput,
         };
 
     public static bool TryParse(string? name, out StepType type)
@@ -34,6 +36,8 @@ public static class StepTypes
         StepType.DockerVolume => "docker-volume",
         StepType.Compose => "compose",
         StepType.Bash => "bash",
+        StepType.Wait => "wait",
+        StepType.EnvInput => "env-input",
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 }

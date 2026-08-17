@@ -19,8 +19,10 @@ public sealed class StepContext
     /// <summary>
     /// The parsed `.env` map from the run target directory, or null when no
     /// `.env` was present / no step needs it. Loaded once by the orchestrator.
+    /// Mutable so an <c>env-input</c> step can add/update a value that later
+    /// steps in the same run see immediately.
     /// </summary>
-    public IReadOnlyDictionary<string, string>? Env { get; init; }
+    public Dictionary<string, string>? Env { get; init; }
 
     /// <summary>Absolute path to the `.env` file (may not exist).</summary>
     public string? EnvPath { get; init; }

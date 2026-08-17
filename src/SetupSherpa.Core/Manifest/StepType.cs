@@ -12,6 +12,8 @@ public enum StepType
     DockerVolume,
     Compose,
     Bash,
+    Wait,
+    EnvInput,
 }
 
 /// <summary>
@@ -34,7 +36,7 @@ public static class StepDefaults
     {
         StepType.Apt or StepType.Repo or StepType.DockerRun or StepType.DockerVolume or StepType.Compose
             => Privilege.Root,
-        StepType.Bash => Privilege.User,
+        StepType.Bash or StepType.Wait or StepType.EnvInput => Privilege.User,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 }

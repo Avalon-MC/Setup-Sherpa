@@ -72,7 +72,7 @@ public sealed class Orchestrator
         // auto-create a blank .env — it's a misleading stray file (the scaffold
         // is .env.example) and would only ever mask compose interpolation.
         string? envPath = _envDir is null ? null : Path.Combine(_envDir, ".env");
-        IReadOnlyDictionary<string, string>? env = null;
+        Dictionary<string, string>? env = null;
         if (envPath is not null && File.Exists(envPath))
             env = DotEnvFile.Parse(File.ReadAllText(envPath));
 

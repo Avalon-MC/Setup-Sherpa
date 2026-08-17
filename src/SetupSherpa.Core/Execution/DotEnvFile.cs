@@ -13,7 +13,7 @@ namespace SetupSherpa.Core.Execution;
 /// </summary>
 public static class DotEnvFile
 {
-    public static IReadOnlyDictionary<string, string> Parse(string content)
+    public static Dictionary<string, string> Parse(string content)
     {
         var map = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var rawLine in content.Split('\n'))

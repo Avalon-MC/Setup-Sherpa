@@ -41,7 +41,7 @@ internal sealed class FakeDownloader : IHttpDownloader
 internal static class TestContext
 {
     public static StepContext Make(Step step, FakeRunner? runner = null, IHttpDownloader? downloader = null,
-        string? manifestDir = null, IReadOnlyDictionary<string, string>? env = null, string? envPath = null)
+        string? manifestDir = null, Dictionary<string, string>? env = null, string? envPath = null)
     {
         var r = runner ?? new FakeRunner();
         var d = downloader ?? new FakeDownloader();

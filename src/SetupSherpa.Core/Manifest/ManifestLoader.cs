@@ -173,6 +173,16 @@ public static class ManifestLoader
             case StepType.Bash:
                 step.Script = Req(table, full, "script");
                 break;
+
+            case StepType.Wait:
+                step.Message = Req(table, full, "message");
+                break;
+
+            case StepType.EnvInput:
+                step.Variable = Req(table, full, "variable");
+                if (table.TryGetValue("secret", out var sec) && sec is bool sb)
+                    step.Secret = sb;
+                break;
         }
 
         return step;

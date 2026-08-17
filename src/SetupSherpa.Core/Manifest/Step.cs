@@ -55,4 +55,11 @@ public sealed class Step
 
     // --- bash ---
     public string? Script { get; set; }
+
+    // --- wait ---
+    public string? Message { get; set; }
+
+    // --- env-input ---
+    public string? Variable { get; set; }
+    public bool Secret { get; set; } = true;
 }
