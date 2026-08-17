@@ -40,6 +40,9 @@ public sealed class ProcessRunner : IProcessRunner
             psi.ArgumentList.Add(_invoking.Name);
             psi.ArgumentList.Add("--");
             psi.ArgumentList.Add(spec.FileName);
+            // Reset HOME to the invoking user's home so $HOME resolves correctly
+            // for dropped (user) steps — otherwise it inherits /root.
+            psi.Environment["HOME"] = _invoking.Home;
         }
         foreach (var a in spec.Arguments)
             psi.ArgumentList.Add(a);
@@ -126,6 +129,8 @@ public sealed class ProcessRunner : IProcessRunner
             RedirectStandardError = true,
         };
         ApplyEnvironment(psi, spec);
+        if (drop)
+            psi.Environment["HOME"] = _invoking!.Home;
 
         using var proc = new Process { StartInfo = psi };
         proc.Start();
