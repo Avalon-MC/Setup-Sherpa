@@ -137,18 +137,21 @@ public static class Program
             return null;
         }
 
-        // Expand each target: a directory yields all its .toml files; a file is used as-is.
+        // Expand each target: a directory yields all its .toml files (recursively,
+        // up to 2 sub-directories deep); a file is used as-is.
         var manifestPaths = new List<string>();
+        var searchDirs = new List<string>();
         foreach (var t in targets)
         {
             if (Directory.Exists(t))
             {
-                var files = Directory.GetFiles(t, "*.toml").OrderBy(f => f, StringComparer.Ordinal);
-                manifestPaths.AddRange(files);
+                searchDirs.Add(t);
+                manifestPaths.AddRange(FindManifests(t, maxDepth: 2));
             }
             else if (File.Exists(t))
             {
                 manifestPaths.Add(t);
+                searchDirs.Add(Path.GetDirectoryName(Path.GetFullPath(t)) ?? ".");
             }
             else
             {
@@ -170,8 +173,8 @@ public static class Program
             rootManifests.Add(m);
         }
 
-        // Resolve dependencies by loading referenced manifests from the same directory.
-        LoadDependencies(rootManifests, byName);
+        // Resolve dependencies by loading referenced manifests from the target tree.
+        LoadDependencies(rootManifests, byName, searchDirs);
 
         // Plan install order (topological sort; detects cycles).
         var ordered = new DependencyPlanner().Plan(byName);
@@ -185,10 +188,10 @@ public static class Program
     /// <summary>
     /// Recursively loads dependencies referenced by the root manifests and each
     /// discovered dependency. Resolution is by the manifest's <c>name</c> field
-    /// (which may differ from its filename): every .toml in the same directory
-    /// is loaded and matched on its <c>name</c>.
+    /// (which may differ from its filename): every .toml in the target tree is
+    /// loaded and matched on its <c>name</c>.
     /// </summary>
-    private static void LoadDependencies(List<Manifest> roots, Dictionary<string, Manifest> byName)
+    private static void LoadDependencies(List<Manifest> roots, Dictionary<string, Manifest> byName, List<string> searchDirs)
     {
         var queue = new Queue<Manifest>(roots);
         while (queue.Count > 0)
@@ -199,21 +202,41 @@ public static class Program
                 if (byName.ContainsKey(dep))
                     continue;
 
-                var dir = Path.GetDirectoryName(m.SourcePath) ?? ".";
-                if (!Directory.Exists(dir))
-                    continue; // planner will error if still missing
-
-                // Match by the manifest's `name` field, not the filename.
-                foreach (var candidate in Directory.GetFiles(dir, "*.toml"))
+                // Search the whole target tree (up to 2 levels deep) for a
+                // manifest whose `name` matches the dependency.
+                foreach (var dir in searchDirs)
                 {
-                    var depManifest = ManifestLoader.Load(candidate);
-                    if (depManifest.Name == dep && byName.TryAdd(depManifest.Name, depManifest))
+                    foreach (var candidate in FindManifests(dir, maxDepth: 2))
                     {
-                        queue.Enqueue(depManifest);
-                        break;
+                        var depManifest = ManifestLoader.Load(candidate);
+                        if (depManifest.Name == dep && byName.TryAdd(depManifest.Name, depManifest))
+                        {
+                            queue.Enqueue(depManifest);
+                            break;
+                        }
                     }
                 }
             }
+        }
+    }
+
+    /// <summary>
+    /// Finds all <c>*.toml</c> files under <paramref name="root"/>, recursing up
+    /// to <paramref name="maxDepth"/> sub-directories deep (0 = just the root).
+    /// </summary>
+    private static IEnumerable<string> FindManifests(string root, int maxDepth)
+    {
+        var results = new List<string>();
+        Walk(root, 0);
+        return results.OrderBy(f => f, StringComparer.Ordinal);
+
+        void Walk(string dir, int depth)
+        {
+            results.AddRange(Directory.GetFiles(dir, "*.toml"));
+            if (depth >= maxDepth)
+                return;
+            foreach (var sub in Directory.GetDirectories(dir))
+                Walk(sub, depth + 1);
         }
     }
 
