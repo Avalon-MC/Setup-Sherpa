@@ -66,16 +66,15 @@ public sealed class Orchestrator
         var reports = new List<ManifestStepReport>();
         var manifestDefaultDir = Directory.GetCurrentDirectory();
 
-        // Load .env once from the run target directory. If it doesn't exist,
-        // create a blank one so compose's --env-file always has a file to point at.
+        // Load .env once from the run target directory, if present. A missing
+        // .env is fine: compose only gets --env-file when the file exists, and
+        // expansionTokens hard-errors if a listed secret is absent. We do NOT
+        // auto-create a blank .env — it's a misleading stray file (the scaffold
+        // is .env.example) and would only ever mask compose interpolation.
         string? envPath = _envDir is null ? null : Path.Combine(_envDir, ".env");
         IReadOnlyDictionary<string, string>? env = null;
-        if (envPath is not null)
-        {
-            if (!File.Exists(envPath))
-                File.WriteAllText(envPath, "");
+        if (envPath is not null && File.Exists(envPath))
             env = DotEnvFile.Parse(File.ReadAllText(envPath));
-        }
 
         int stepNumber = 0;
         foreach (var manifest in ordered)

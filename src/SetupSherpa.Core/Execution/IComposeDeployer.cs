@@ -33,10 +33,12 @@ public sealed class LocalComposeDeployer : IComposeDeployer
         }
         args.Add("-f");
         args.Add(resolvedFilePath);
-        // --env-file drives YAML interpolation from the single .env (created if
-        // missing). Getting vars INTO the container is the compose author's job
+        // --env-file drives YAML interpolation from the single .env, but ONLY
+        // when that file exists. No .env -> no --env-file (compose uses its own
+        // defaults) rather than a failure or a misleading auto-created blank
+        // file. Getting vars INTO the container is the compose author's job
         // via env_file: in the service YAML — not conflated here.
-        if (ctx.EnvPath is not null)
+        if (ctx.EnvPath is not null && File.Exists(ctx.EnvPath))
         {
             args.Add("--env-file");
             args.Add(ctx.EnvPath);

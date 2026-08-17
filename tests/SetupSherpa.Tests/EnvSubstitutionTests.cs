@@ -169,19 +169,44 @@ public class EnvSubstitutionExecutorTests
 public class ComposeEnvFileTests
 {
     [Fact]
-    public async Task Compose_PassesEnvFile_ToDocker()
+    public async Task Compose_PassesEnvFile_WhenFileExists()
     {
         var runner = new FakeRunner();
-        var envPath = "/config/.env";
+        var envPath = Path.Combine(Path.GetTempPath(), $"sherpa-test-{Guid.NewGuid():N}", ".env");
+        Directory.CreateDirectory(Path.GetDirectoryName(envPath)!);
+        File.WriteAllText(envPath, "A=1\n");
+        try
+        {
+            var step = new Step { Type = StepType.Compose, Project = "web", File = "./compose.yaml" };
+            var ctx = TestContext.Make(step, runner, env: new Dictionary<string, string>(), envPath: envPath);
+            runner.Responses.Enqueue((1, "")); // compose ls -> not running
+
+            await new ComposeExecutor(new LocalComposeDeployer()).ExecuteAsync(ctx, default);
+
+            // compose -p web -f file --env-file <path> up -d
+            var runCall = runner.Calls[1];
+            Assert.Contains("--env-file", runCall.Arguments);
+            Assert.Contains(envPath, runCall.Arguments);
+        }
+        finally
+        {
+            Directory.Delete(Path.GetDirectoryName(envPath)!, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Compose_OmitsEnvFile_WhenFileMissing()
+    {
+        var runner = new FakeRunner();
+        var envPath = "/does/not/exist/.env"; // no .env present
         var step = new Step { Type = StepType.Compose, Project = "web", File = "./compose.yaml" };
         var ctx = TestContext.Make(step, runner, env: new Dictionary<string, string>(), envPath: envPath);
         runner.Responses.Enqueue((1, "")); // compose ls -> not running
 
         await new ComposeExecutor(new LocalComposeDeployer()).ExecuteAsync(ctx, default);
 
-        // compose -p web -f file --env-file /config/.env up -d
+        // No .env file -> no --env-file; compose uses its own defaults.
         var runCall = runner.Calls[1];
-        Assert.Contains("--env-file", runCall.Arguments);
-        Assert.Contains(envPath, runCall.Arguments);
+        Assert.DoesNotContain("--env-file", runCall.Arguments);
     }
 }
