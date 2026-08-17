@@ -17,10 +17,10 @@ public class DockerRunExecutorTests
         var result = await new DockerRunExecutor().ExecuteAsync(ctx, default);
 
         Assert.Equal(StepOutcome.Completed, result.Outcome);
-        // inspect call + run call
+        // inspect call + run call (executor prepends `run` to the command)
         Assert.Equal("inspect", runner.Calls[0].Arguments[0]);
         Assert.Equal("docker", runner.Calls[1].FileName);
-        Assert.Equal(["-d", "--name", "web", "-p", "8080:80", "nginx"], runner.Calls[1].Arguments);
+        Assert.Equal(["run", "-d", "--name", "web", "-p", "8080:80", "nginx"], runner.Calls[1].Arguments);
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public class DockerVolumeExecutorTests
         Assert.Equal(StepOutcome.Completed, result.Outcome);
         Assert.Equal(2, runner.Calls.Count);
         Assert.Equal(["volume", "inspect", "portainer_data"], runner.Calls[0].Arguments);
-        Assert.Equal(["create", "portainer_data"], runner.Calls[1].Arguments);
+        Assert.Equal(["volume", "create", "portainer_data"], runner.Calls[1].Arguments);
     }
 
     [Fact]

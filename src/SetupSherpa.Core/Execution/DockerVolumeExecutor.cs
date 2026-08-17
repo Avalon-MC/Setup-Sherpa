@@ -19,6 +19,12 @@ public sealed class DockerVolumeExecutor : IStepExecutor
         if (args.Count == 0)
             return StepResult.Completed("no docker command tokens; nothing to run.");
 
+        // The step type is `docker-volume`, so the command is the args AFTER
+        // `docker volume` — prepend `volume` so the author writes `create <name>`.
+        var volumeArgs = new List<string> { "volume" };
+        volumeArgs.AddRange(args);
+        args = volumeArgs;
+
         var name = ExtractVolumeName(args);
 
         if (name is not null)
@@ -36,9 +42,9 @@ public sealed class DockerVolumeExecutor : IStepExecutor
 
     private static string? ExtractVolumeName(IReadOnlyList<string> args)
     {
-        // "create" is the first token; the volume name is the next arg.
-        if (args.Count >= 2 && args[0] == "create")
-            return args[1];
+        // args = ["volume", "create", <name>, ...]; the name is the 3rd token.
+        if (args.Count >= 3 && args[0] == "volume" && args[1] == "create")
+            return args[2];
         return null;
     }
 

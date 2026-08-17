@@ -22,6 +22,12 @@ public sealed class DockerRunExecutor : IStepExecutor
         if (args.Count == 0)
             return StepResult.Completed("no docker command tokens; nothing to run.");
 
+        // The step type is `docker-run`, so the command is the args AFTER
+        // `docker run` — prepend `run` so the author doesn't have to.
+        var runArgs = new List<string> { "run" };
+        runArgs.AddRange(args);
+        args = runArgs;
+
         var name = ExtractName(args);
 
         // Idempotency: only when we have a stable name.
