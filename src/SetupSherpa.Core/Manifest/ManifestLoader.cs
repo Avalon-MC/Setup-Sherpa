@@ -145,6 +145,8 @@ public static class ManifestLoader
                     step.Packages = pkgs;
                 if (step.Packages.Count == 0)
                     throw new ManifestException($"Manifest '{full}' apt step needs at least one 'packages' entry.");
+                if (TryStringArray(table, "env", out var envs))
+                    step.Env = envs;
                 break;
 
             case StepType.Repo:

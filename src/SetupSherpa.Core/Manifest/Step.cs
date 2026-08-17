@@ -29,6 +29,7 @@ public sealed class Step
     // --- apt ---
     public bool Update { get; set; }
     public IReadOnlyList<string> Packages { get; set; } = [];
+    public IReadOnlyList<string> Env { get; set; } = [];
 
     // --- repo ---
     public string? Source { get; set; }

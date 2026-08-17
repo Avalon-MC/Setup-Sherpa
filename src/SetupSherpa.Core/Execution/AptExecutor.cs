@@ -45,11 +45,19 @@ public sealed class AptExecutor : IStepExecutor
 
     private static IReadOnlyDictionary<string, string> NonInteractiveEnv(StepContext ctx)
     {
+        // Start with the step's declared env (e.g. ACCEPT_EULA=Y), then layer
+        // the debconf frontend on top.
+        var env = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var kv in ctx.Step.Env)
+        {
+            int eq = kv.IndexOf('=');
+            if (eq > 0)
+                env[kv[..eq]] = kv[(eq + 1)..];
+        }
         // If the step is declared interactive, let it prompt normally; otherwise
         // suppress debconf prompts so the install doesn't hang waiting for input.
-        if (ctx.Step.Interactive)
-            return new Dictionary<string, string> { ["DEBIAN_FRONTEND"] = "teletype" };
-        return new Dictionary<string, string> { ["DEBIAN_FRONTEND"] = "noninteractive" };
+        env["DEBIAN_FRONTEND"] = ctx.Step.Interactive ? "teletype" : "noninteractive";
+        return env;
     }
 
     private static async Task<bool> IsInstalledAsync(StepContext ctx, string pkg, CancellationToken ct)
