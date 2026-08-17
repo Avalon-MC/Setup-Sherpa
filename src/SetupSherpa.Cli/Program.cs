@@ -75,6 +75,9 @@ public static class Program
             new BashExecutor(),
             new WaitExecutor(),
             new EnvInputExecutor(),
+            new CopyExecutor(),
+            new ExtractExecutor(),
+            new SystemdExecutor(),
         };
 
         // .sherpa state lives in the target directory (the first directory target,

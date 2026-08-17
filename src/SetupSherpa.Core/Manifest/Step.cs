@@ -62,4 +62,17 @@ public sealed class Step
     // --- env-input ---
     public string? Variable { get; set; }
     public bool Secret { get; set; } = true;
+
+    // --- copy ---
+    public string? Src { get; set; }
+    public string? Dest { get; set; }
+
+    // --- extract ---
+    public string? Archive { get; set; }
+
+    // --- systemd ---
+    public string? Unit { get; set; }
+    public string? ServiceName { get; set; }
+    public bool Enable { get; set; }
+    public bool Start { get; set; }
 }

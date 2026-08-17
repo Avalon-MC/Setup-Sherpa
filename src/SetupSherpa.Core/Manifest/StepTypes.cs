@@ -18,6 +18,9 @@ public static class StepTypes
             ["bash"] = StepType.Bash,
             ["wait"] = StepType.Wait,
             ["env-input"] = StepType.EnvInput,
+            ["copy"] = StepType.Copy,
+            ["extract"] = StepType.Extract,
+            ["systemd"] = StepType.Systemd,
         };
 
     public static bool TryParse(string? name, out StepType type)
@@ -38,6 +41,9 @@ public static class StepTypes
         StepType.Bash => "bash",
         StepType.Wait => "wait",
         StepType.EnvInput => "env-input",
+        StepType.Copy => "copy",
+        StepType.Extract => "extract",
+        StepType.Systemd => "systemd",
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 }

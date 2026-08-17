@@ -183,6 +183,23 @@ public static class ManifestLoader
                 if (table.TryGetValue("secret", out var sec) && sec is bool sb)
                     step.Secret = sb;
                 break;
+
+            case StepType.Copy:
+                step.Src = Req(table, full, "src");
+                step.Dest = Req(table, full, "dest");
+                break;
+
+            case StepType.Extract:
+                step.Archive = Req(table, full, "archive");
+                step.Dest = Req(table, full, "dest");
+                break;
+
+            case StepType.Systemd:
+                step.Unit = Req(table, full, "unit");
+                if (TryString(table, "name", out string? svc)) step.ServiceName = svc;
+                if (table.TryGetValue("enable", out var en) && en is bool enb) step.Enable = enb;
+                if (table.TryGetValue("start", out var st) && st is bool stb) step.Start = stb;
+                break;
         }
 
         return step;
