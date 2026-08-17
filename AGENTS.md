@@ -55,6 +55,13 @@ dotnet run --project src/SetupSherpa.Cli -- plan <dir-or-file>  # print order on
   the manifest's `name` field (scanned from every .toml in the directory), not by
   filename. `docker-run`/`docker-volume` take a
   raw `command` string tokenized by `CommandTokenizer` (no shell expansion — D5).
+- **`.env` expansion**: `docker-run`/`docker-volume` steps may list `expansionTokens`
+  (bare `.env` key names). Sherpa substitutes `$VAR`/`${VAR}` in the raw command
+  from a single `.env` in the run target dir (created blank if missing, never
+  committed — see `.gitignore`). Substitution happens BEFORE tokenization; unlisted
+  `$VAR` stays literal; a listed-but-missing token throws. Compose passes `--env-file`
+  (YAML interpolation only). Bash is untouched (`$VAR` is shell there). Values are
+  redacted from any surfaced command/error.
 - **Step types** use `StepTypes.TryParse` (kebab-case names like `docker-run`; a plain
   `Enum.TryParse` fails on the hyphen).
 - **Commits**: one descriptive past-tense line ("Add .sherpa state: …", "Phase 2: …").

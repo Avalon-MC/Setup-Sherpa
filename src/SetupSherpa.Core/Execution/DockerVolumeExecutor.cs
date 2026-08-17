@@ -13,7 +13,9 @@ public sealed class DockerVolumeExecutor : IStepExecutor
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, CancellationToken ct)
     {
-        var args = CommandTokenizer.Tokenize(ctx.Step.Command!);
+        // Expand listed $VAR/${VAR} tokens from .env BEFORE tokenization.
+        var command = EnvSubstitution.ExpandCommand(ctx.Step.Command!, ctx.Step.ExpansionTokens, ctx.Env);
+        var args = CommandTokenizer.Tokenize(command);
         if (args.Count == 0)
             return StepResult.Completed("no docker command tokens; nothing to run.");
 

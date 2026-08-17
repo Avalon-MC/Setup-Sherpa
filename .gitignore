@@ -6,3 +6,6 @@ obj/
 # Publish output
 artifacts/
 publish/
+
+# Secrets — .env holds values substituted into docker steps; never commit it.
+.env

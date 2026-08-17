@@ -15,7 +15,10 @@ public sealed class DockerRunExecutor : IStepExecutor
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, CancellationToken ct)
     {
-        var args = CommandTokenizer.Tokenize(ctx.Step.Command!);
+        // Expand listed $VAR/${VAR} tokens from .env BEFORE tokenization (D5:
+        // deterministic substitution from a controlled file, not shell expansion).
+        var command = EnvSubstitution.ExpandCommand(ctx.Step.Command!, ctx.Step.ExpansionTokens, ctx.Env);
+        var args = CommandTokenizer.Tokenize(command);
         if (args.Count == 0)
             return StepResult.Completed("no docker command tokens; nothing to run.");
 
@@ -44,8 +47,17 @@ public sealed class DockerRunExecutor : IStepExecutor
 
         bool ok = await ctx.RunOkAsync("docker", args, ct: ct).ConfigureAwait(false);
         if (!ok)
-            throw new StepFailedException($"docker run failed (exit != 0).");
+            throw new StepFailedException(
+                $"docker run failed (exit != 0)." + RedactCommand(ctx, command));
         return StepResult.Completed();
+    }
+
+    private static string RedactCommand(StepContext ctx, string command)
+    {
+        if (ctx.Env is null || ctx.Step.ExpansionTokens.Count == 0)
+            return "";
+        var redacted = SecretRedactor.Redact(command, ctx.Step.ExpansionTokens, ctx.Env);
+        return redacted == command ? "" : $" Command: {redacted}";
     }
 
     private static string? ExtractName(IReadOnlyList<string> args)

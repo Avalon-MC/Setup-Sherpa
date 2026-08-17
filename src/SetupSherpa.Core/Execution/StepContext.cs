@@ -16,6 +16,15 @@ public sealed class StepContext
     public required IProcessRunner Runner { get; init; }
     public required IHttpDownloader Downloader { get; init; }
 
+    /// <summary>
+    /// The parsed `.env` map from the run target directory, or null when no
+    /// `.env` was present / no step needs it. Loaded once by the orchestrator.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? Env { get; init; }
+
+    /// <summary>Absolute path to the `.env` file (may not exist).</summary>
+    public string? EnvPath { get; init; }
+
     /// <summary>Warnings surfaced for this step (e.g. a docker-run without --name).</summary>
     public List<string> Warnings { get; } = [];
 

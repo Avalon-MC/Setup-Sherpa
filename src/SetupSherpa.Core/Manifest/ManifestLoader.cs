@@ -159,6 +159,8 @@ public static class ManifestLoader
             case StepType.DockerRun:
             case StepType.DockerVolume:
                 step.Command = Req(table, full, "command");
+                if (TryStringArray(table, "expansionTokens", out var expToks))
+                    step.ExpansionTokens = expToks;
                 break;
 
             case StepType.Compose:

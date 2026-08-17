@@ -86,7 +86,7 @@ public static class Program
             state = SherpaState.Load(statePath);
         }
 
-        var orchestrator = new Orchestrator(executors, runner, new HttpDownloader(), invoking, state, statePath);
+        var orchestrator = new Orchestrator(executors, runner, new HttpDownloader(), invoking, state, statePath, stateDir);
 
         Console.WriteLine($"Plan: {string.Join(" → ", ordered.Select(m => m.Name))}");
         Console.WriteLine();

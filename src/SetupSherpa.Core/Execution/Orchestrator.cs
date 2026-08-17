@@ -41,6 +41,7 @@ public sealed class Orchestrator
     private readonly Identity? _invoking;
     private readonly SherpaState? _state;
     private readonly string? _statePath;
+    private readonly string? _envDir;
 
     public Orchestrator(
         IEnumerable<IStepExecutor> executors,
@@ -48,7 +49,8 @@ public sealed class Orchestrator
         IHttpDownloader downloader,
         Identity? invoking,
         SherpaState? state = null,
-        string? statePath = null)
+        string? statePath = null,
+        string? envDir = null)
     {
         _executors = executors.ToDictionary(e => e.Type);
         _runner = runner;
@@ -56,12 +58,24 @@ public sealed class Orchestrator
         _invoking = invoking;
         _state = state;
         _statePath = statePath;
+        _envDir = envDir;
     }
 
     public async Task<RunReport> RunAsync(IReadOnlyList<Manifest> ordered, CancellationToken ct = default)
     {
         var reports = new List<ManifestStepReport>();
         var manifestDefaultDir = Directory.GetCurrentDirectory();
+
+        // Load .env once from the run target directory. If it doesn't exist,
+        // create a blank one so compose's --env-file always has a file to point at.
+        string? envPath = _envDir is null ? null : Path.Combine(_envDir, ".env");
+        IReadOnlyDictionary<string, string>? env = null;
+        if (envPath is not null)
+        {
+            if (!File.Exists(envPath))
+                File.WriteAllText(envPath, "");
+            env = DotEnvFile.Parse(File.ReadAllText(envPath));
+        }
 
         int stepNumber = 0;
         foreach (var manifest in ordered)
@@ -103,6 +117,8 @@ public sealed class Orchestrator
                 var ctx = new StepContext
                 {
                     Step = step,
+                    Env = env,
+                    EnvPath = envPath,
                     Manifest = manifest,
                     WorkDir = workDir,
                     Privilege = privilege,

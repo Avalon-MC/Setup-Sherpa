@@ -41,6 +41,14 @@ public sealed class Step
     // --- docker-run / docker-volume ---
     public string? Command { get; set; }
 
+    /// <summary>
+    /// Names of `.env` variables to substitute into this step's raw command
+    /// (docker-run / docker-volume only) before tokenization. Each entry is a
+    /// bare `.env` key; `$VAR` / `${VAR}` in the command is replaced with the
+    /// `.env` value. Unlisted `$VAR` is left literal. Not for bash (shell syntax).
+    /// </summary>
+    public IReadOnlyList<string> ExpansionTokens { get; set; } = [];
+
     // --- compose ---
     public string? Project { get; set; }
     public string? File { get; set; }

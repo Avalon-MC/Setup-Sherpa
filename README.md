@@ -66,6 +66,23 @@ chmod 700 .
 - **Hands over when needed** — some installs need a person (a wizard, a license prompt). Mark a step `interactive: true`, or let Sherpa notice when a step is waiting for input — it hands you the keyboard and continues when you're done.
 - **Predictable commands** — Docker commands are written exactly as you'd type them, and Sherpa runs them without a shell in between, so nothing gets expanded or reinterpreted. Same manifest in, same result out.
 
+## `.env` secrets
+
+A single `.env` next to your manifests holds values for docker steps. Reference
+them with `expansionTokens` on a `docker-run`/`docker-volume` step:
+
+```toml
+[[step]]
+type = "docker-run"
+expansionTokens = ["MSSQL_SA_PASSWORD"]
+command = "-d -e MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD --name sql1 mcr/sql:latest"
+```
+
+Sherpa substitutes `$VAR`/`${VAR}` for the listed tokens from `.env` (created blank
+if missing), never commits it (see `.gitignore`), and hides the values from any
+output. Compose steps get `.env` via `--env-file` for YAML interpolation. Unlisted
+`$VAR` is left literal; a listed-but-missing token stops the run.
+
 ## Design decisions
 
 The full rationale for every choice (stack, privilege model, interactive handling, TOML format, passthrough commands, `workdir`, compose URLs) is in [`DECISIONS.md`](DECISIONS.md). The master plan is in [`PLAN.md`](PLAN.md).
@@ -103,7 +120,7 @@ Each `[[step]]` has a shared core plus type-specific fields. The `type` is alway
 |---|---|
 | `apt` | `packages` (array, required), `update` (bool) |
 | `repo` | `source` (string, required), `keyring` (string), `suite` (string, default `$VERSION_CODENAME`), `components` (array, default `["main"]`), `architectures` (string), `repo_name` (string) |
-| `docker-run` | `command` (string, required) — raw docker args, no shell expansion |
-| `docker-volume` | `command` (string, required) — raw docker args |
+| `docker-run` | `command` (string, required) — raw docker args, no shell expansion; `expansionTokens` (array) — `.env` keys to substitute into the command |
+| `docker-volume` | `command` (string, required) — raw docker args; `expansionTokens` (array) — `.env` keys to substitute |
 | `compose` | `project` (string, required), `file` (string, required — path or `@url:https://...`) |
 | `bash` | `script` (string, required) |
