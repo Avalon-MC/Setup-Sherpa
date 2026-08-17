@@ -63,6 +63,37 @@ public static class EnvSubstitution
         return Expand(command, tokens, env);
     }
 
+    /// <summary>
+    /// Expands a bash script's listed tokens, shell-quoting each value so the
+    /// substituted text is safe inside the script (bash would otherwise treat
+    /// spaces/special chars in the value as syntax). No-op when no tokens are
+    /// listed. Throws if tokens are listed but no `.env` was loaded.
+    /// </summary>
+    public static string ExpandBash(string script, IReadOnlyList<string> tokens, IReadOnlyDictionary<string, string>? env)
+    {
+        if (tokens.Count == 0)
+            return script;
+        if (env is null)
+            throw new EnvSubstitutionException(
+                $"expansionTokens listed ({string.Join(", ", tokens)}) but no .env was available");
+
+        var result = script;
+        foreach (var token in tokens)
+        {
+            if (!env.ContainsKey(token))
+                throw new EnvSubstitutionException(
+                    $"'{token}' requested in expansionTokens but not present in .env");
+            string quoted = ShellQuote(env[token]);
+            result = result.Replace("${" + token + "}", quoted);
+            result = ReplaceBare(result, token, quoted);
+        }
+        return result;
+    }
+
+    /// <summary>Single-quotes a value for safe embedding in a bash script.</summary>
+    private static string ShellQuote(string value)
+        => "'" + value.Replace("'", "'\"'\"'") + "'";
+
     private static string ReplaceBare(string input, string token, string value)
     {
         var sb = new System.Text.StringBuilder(input.Length);

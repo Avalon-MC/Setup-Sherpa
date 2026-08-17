@@ -13,7 +13,11 @@ public sealed class BashExecutor : IStepExecutor
 
     public async Task<StepResult> ExecuteAsync(StepContext ctx, CancellationToken ct)
     {
-        bool ok = await ctx.RunOkAsync("bash", new[] { "-c", ctx.Step.Script! }, ct: ct).ConfigureAwait(false);
+        // Expand listed $VAR/${VAR} tokens from .env, shell-quoting each value
+        // so it's safe inside the script. Unlisted $VAR stays literal (bash
+        // handles it natively).
+        var script = EnvSubstitution.ExpandBash(ctx.Step.Script!, ctx.Step.ExpansionTokens, ctx.Env);
+        bool ok = await ctx.RunOkAsync("bash", new[] { "-c", script }, ct: ct).ConfigureAwait(false);
         if (!ok)
             throw new StepFailedException("bash script failed (exit != 0).");
         return StepResult.Completed();

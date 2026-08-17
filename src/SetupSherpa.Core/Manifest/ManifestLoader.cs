@@ -172,6 +172,8 @@ public static class ManifestLoader
 
             case StepType.Bash:
                 step.Script = Req(table, full, "script");
+                if (TryStringArray(table, "expansionTokens", out var bashToks))
+                    step.ExpansionTokens = bashToks;
                 break;
 
             case StepType.Wait:

@@ -103,6 +103,32 @@ public class EnvSubstitutionTests
         var result = EnvSubstitution.Expand("$MSSQL_SA_PASSWORDX", ["MSSQL_SA_PASSWORD"], Env);
         Assert.Equal("$MSSQL_SA_PASSWORDX", result);
     }
+
+    [Fact]
+    public void ExpandBash_ShellQuotes_Value()
+    {
+        var env = new Dictionary<string, string> { ["PW"] = "a b'c" };
+        var result = EnvSubstitution.ExpandBash("echo $PW", ["PW"], env);
+        // Value is single-quoted so spaces/quotes are safe inside the script.
+        Assert.Equal("echo 'a b'\"'\"'c'", result);
+    }
+
+    [Fact]
+    public void ExpandBash_LeavesUnlisted_Literal()
+    {
+        var env = new Dictionary<string, string> { ["PW"] = "x" };
+        var result = EnvSubstitution.ExpandBash("echo $HOME $PW", ["PW"], env);
+        Assert.Equal("echo $HOME 'x'", result);
+    }
+
+    [Fact]
+    public void ExpandBash_Throws_WhenListedMissing()
+    {
+        var env = new Dictionary<string, string> { };
+        var ex = Assert.Throws<EnvSubstitutionException>(() =>
+            EnvSubstitution.ExpandBash("echo $NOPE", ["NOPE"], env));
+        Assert.Contains("NOPE", ex.Message);
+    }
 }
 
 public class EnvSubstitutionExecutorTests
