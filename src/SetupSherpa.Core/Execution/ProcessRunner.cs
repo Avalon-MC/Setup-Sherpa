@@ -36,8 +36,10 @@ public sealed class ProcessRunner : IProcessRunner
             psi.ArgumentList.Add(_invoking!.Uid.ToString());
             psi.ArgumentList.Add("--regid");
             psi.ArgumentList.Add(_invoking.Gid.ToString());
+            // --init-groups is a bare flag (no argument): supplementary groups
+            // are derived from the reuid/regid, NOT a username argument. Passing
+            // a name here makes setpriv treat it as the command to run.
             psi.ArgumentList.Add("--init-groups");
-            psi.ArgumentList.Add(_invoking.Name);
             psi.ArgumentList.Add("--");
             psi.ArgumentList.Add(spec.FileName);
             // Reset HOME to the invoking user's home so $HOME resolves correctly
@@ -105,7 +107,7 @@ public sealed class ProcessRunner : IProcessRunner
             argv.Add("/usr/bin/setpriv");
             argv.Add("--reuid"); argv.Add(_invoking!.Uid.ToString());
             argv.Add("--regid"); argv.Add(_invoking.Gid.ToString());
-            argv.Add("--init-groups"); argv.Add(_invoking.Name);
+            argv.Add("--init-groups"); // bare flag; groups derive from reuid/regid
             argv.Add("--");
             argv.Add(spec.FileName);
         }
