@@ -39,8 +39,9 @@ public static class StepDefaults
     {
         StepType.Apt or StepType.Repo or StepType.DockerRun or StepType.DockerVolume or StepType.Compose
             => Privilege.Root,
-        StepType.Bash or StepType.Wait or StepType.EnvInput or StepType.Copy or StepType.Extract or StepType.Systemd
+        StepType.Bash or StepType.Wait or StepType.EnvInput or StepType.Copy or StepType.Extract
             => Privilege.User,
+        StepType.Systemd => Privilege.Root,
         _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 }
