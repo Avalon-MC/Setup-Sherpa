@@ -20,7 +20,8 @@ design rationale are in `PLAN.md` and `DECISIONS.md`.
 dotnet build                          # whole solution
 dotnet test tests/SetupSherpa.Tests    # full suite (xunit)
 dotnet test tests/SetupSherpa.Tests --filter "FullyQualifiedName~ClassName"   # one class
-dotnet run --project src/SetupSherpa.Cli -- run <dir-or-file>   # run the CLI
+dotnet run --project src/SetupSherpa.Cli -- run <dir-or-file>   # install
+dotnet run --project src/SetupSherpa.Cli -- plan <dir-or-file>  # print order only, no install, no .sherpa
 ```
 
 - `SetupSherpa.slnx` wires `src/SetupSherpa.Cli`, `src/SetupSherpa.Core`, `tests/SetupSherpa.Tests`.

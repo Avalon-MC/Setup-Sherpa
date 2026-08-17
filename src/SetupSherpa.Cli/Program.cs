@@ -27,6 +27,9 @@ public static class Program
             if (args[0] == "run")
                 return await RunAsync(args.Skip(1).ToArray());
 
+            if (args[0] == "plan")
+                return await PlanAsync(args.Skip(1).ToArray());
+
             Console.Error.WriteLine($"Unknown command '{args[0]}'. Use 'sherpa help'.");
             return 2;
         }
@@ -44,51 +47,9 @@ public static class Program
 
     private static async Task<int> RunAsync(string[] targets)
     {
-        if (targets.Length == 0)
-        {
-            Console.Error.WriteLine("  ✗ run requires a manifest directory or file.");
-            PrintUsage();
+        var ordered = LoadAndPlan(targets, out var stateDir);
+        if (ordered is null)
             return 2;
-        }
-
-        // Expand each target: a directory yields all its .toml files; a file is used as-is.
-        var manifestPaths = new List<string>();
-        foreach (var t in targets)
-        {
-            if (Directory.Exists(t))
-            {
-                var files = Directory.GetFiles(t, "*.toml").OrderBy(f => f, StringComparer.Ordinal);
-                manifestPaths.AddRange(files);
-            }
-            else if (File.Exists(t))
-            {
-                manifestPaths.Add(t);
-            }
-            else
-            {
-                throw new ManifestException($"Target '{t}' is neither a directory nor a manifest file.");
-            }
-        }
-
-        if (manifestPaths.Count == 0)
-            throw new ManifestException($"No .toml manifests found in the given target(s).");
-
-        // Load the requested manifests.
-        var byName = new Dictionary<string, Manifest>(StringComparer.Ordinal);
-        var rootManifests = new List<Manifest>();
-        foreach (var p in manifestPaths)
-        {
-            var m = ManifestLoader.Load(p);
-            if (!byName.TryAdd(m.Name, m))
-                throw new ManifestException($"Duplicate manifest name '{m.Name}' from '{p}'.");
-            rootManifests.Add(m);
-        }
-
-        // Resolve dependencies by loading referenced manifests from the same directory.
-        LoadDependencies(rootManifests, byName);
-
-        // Plan install order (topological sort; detects cycles).
-        var ordered = new DependencyPlanner().Plan(byName);
 
         // Resolve the invoking identity for privilege drops.
         var invoking = PrivilegeResolver.ResolveInvokingIdentity();
@@ -117,9 +78,6 @@ public static class Program
         // .sherpa state lives in the target directory (the first directory target,
         // or the directory of the first file target). It tracks which manifests
         // are already installed so re-runs skip them.
-        var stateDir = targets
-            .Select(t => Directory.Exists(t) ? t : Path.GetDirectoryName(Path.GetFullPath(t)))
-            .FirstOrDefault(d => d is not null);
         SherpaState? state = null;
         string? statePath = null;
         if (stateDir is not null)
@@ -145,6 +103,81 @@ public static class Program
         Console.WriteLine("✗ Run stopped at a failed step. Because steps are idempotent,");
         Console.WriteLine("  you can re-run and it will resume from the failure.");
         return 1;
+    }
+
+    /// <summary>
+    /// Plan-only mode: resolves the manifest set and install order, dumps the
+    /// ordered plan, and exits WITHOUT installing anything or touching .sherpa.
+    /// </summary>
+    private static async Task<int> PlanAsync(string[] targets)
+    {
+        var ordered = LoadAndPlan(targets, out _);
+        if (ordered is null)
+            return 2;
+
+        Console.WriteLine("Install order:");
+        foreach (var m in ordered)
+            Console.WriteLine($"  {m.Name}" + (m.InstallOrder != 0 ? $"  (installOrder={m.InstallOrder})" : ""));
+        return 0;
+    }
+
+    /// <summary>
+    /// Shared between <c>run</c> and <c>plan</c>: expands targets into manifest
+    /// files, loads them plus their dependencies, and computes install order.
+    /// On a bad target or empty set, prints an error and returns null.
+    /// </summary>
+    private static IReadOnlyList<Manifest>? LoadAndPlan(string[] targets, out string? stateDir)
+    {
+        stateDir = null;
+        if (targets.Length == 0)
+        {
+            Console.Error.WriteLine("  ✗ requires a manifest directory or file.");
+            return null;
+        }
+
+        // Expand each target: a directory yields all its .toml files; a file is used as-is.
+        var manifestPaths = new List<string>();
+        foreach (var t in targets)
+        {
+            if (Directory.Exists(t))
+            {
+                var files = Directory.GetFiles(t, "*.toml").OrderBy(f => f, StringComparer.Ordinal);
+                manifestPaths.AddRange(files);
+            }
+            else if (File.Exists(t))
+            {
+                manifestPaths.Add(t);
+            }
+            else
+            {
+                throw new ManifestException($"Target '{t}' is neither a directory nor a manifest file.");
+            }
+        }
+
+        if (manifestPaths.Count == 0)
+            throw new ManifestException("No .toml manifests found in the given target(s).");
+
+        // Load the requested manifests.
+        var byName = new Dictionary<string, Manifest>(StringComparer.Ordinal);
+        var rootManifests = new List<Manifest>();
+        foreach (var p in manifestPaths)
+        {
+            var m = ManifestLoader.Load(p);
+            if (!byName.TryAdd(m.Name, m))
+                throw new ManifestException($"Duplicate manifest name '{m.Name}' from '{p}'.");
+            rootManifests.Add(m);
+        }
+
+        // Resolve dependencies by loading referenced manifests from the same directory.
+        LoadDependencies(rootManifests, byName);
+
+        // Plan install order (topological sort; detects cycles).
+        var ordered = new DependencyPlanner().Plan(byName);
+
+        stateDir = targets
+            .Select(t => Directory.Exists(t) ? t : Path.GetDirectoryName(Path.GetFullPath(t)))
+            .FirstOrDefault(d => d is not null);
+        return ordered;
     }
 
     /// <summary>
@@ -195,6 +228,10 @@ public static class Program
 
               sherpa run <manifest.toml> [<manifest2.toml> ...]
                   Load specific manifest files instead of a whole directory.
+
+              sherpa plan <directory-or-file> [...]
+                  Walk the dependency tree and print the ordered install plan.
+                  Does NOT install anything and does not touch .sherpa.
             """);
     }
 }
