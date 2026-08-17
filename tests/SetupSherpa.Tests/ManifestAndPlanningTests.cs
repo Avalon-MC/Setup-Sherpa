@@ -187,6 +187,20 @@ public class ManifestLoaderTests
         var ex = Assert.Throws<ManifestException>(() => ManifestLoader.Load(p));
         Assert.Contains("installOrder", ex.Message);
     }
+
+    [Fact]
+    public void Parses_DockerCompose_AsComposeAlias()
+    {
+        var p = Write("dc.toml", """
+            name = "dc"
+            [[step]]
+            type = "docker-compose"
+            project = "web"
+            file = "compose.yaml"
+            """);
+        var m = ManifestLoader.Load(p);
+        Assert.Equal(StepType.Compose, m.Steps[0].Type);
+    }
 }
 
 public class DependencyPlannerTests

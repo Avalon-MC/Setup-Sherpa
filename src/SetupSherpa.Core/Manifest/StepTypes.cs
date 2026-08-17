@@ -15,6 +15,7 @@ public static class StepTypes
             ["docker-run"] = StepType.DockerRun,
             ["docker-volume"] = StepType.DockerVolume,
             ["compose"] = StepType.Compose,
+            ["docker-compose"] = StepType.Compose,
             ["bash"] = StepType.Bash,
             ["wait"] = StepType.Wait,
             ["env-input"] = StepType.EnvInput,
