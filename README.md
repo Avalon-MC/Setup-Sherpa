@@ -102,7 +102,7 @@ Each `[[step]]` has a shared core plus type-specific fields. The `type` is alway
 | `type` | Fields |
 |---|---|
 | `apt` | `packages` (array, required), `update` (bool) |
-| `repo` | `source` (string, required), `keyring` (string), `components` (array, default `["stable"]`), `repo_name` (string) |
+| `repo` | `source` (string, required), `keyring` (string), `suite` (string, default `$VERSION_CODENAME`), `components` (array, default `["main"]`), `architectures` (string), `repo_name` (string) |
 | `docker-run` | `command` (string, required) — raw docker args, no shell expansion |
 | `docker-volume` | `command` (string, required) — raw docker args |
 | `compose` | `project` (string, required), `file` (string, required — path or `@url:https://...`) |

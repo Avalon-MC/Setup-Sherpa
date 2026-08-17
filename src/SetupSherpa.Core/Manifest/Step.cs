@@ -33,6 +33,8 @@ public sealed class Step
     // --- repo ---
     public string? Source { get; set; }
     public string? Keyring { get; set; }
+    public string? Suite { get; set; }
+    public string? Architectures { get; set; }
     public IReadOnlyList<string> Components { get; set; } = [];
     public string? RepoName { get; set; }
 

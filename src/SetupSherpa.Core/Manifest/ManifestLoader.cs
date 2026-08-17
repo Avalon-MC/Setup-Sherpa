@@ -150,6 +150,8 @@ public static class ManifestLoader
             case StepType.Repo:
                 step.Source = Req(table, full, "source");
                 if (TryString(table, "keyring", out string? key)) step.Keyring = key;
+                if (TryString(table, "suite", out string? suite)) step.Suite = suite;
+                if (TryString(table, "architectures", out string? arch)) step.Architectures = arch;
                 if (TryStringArray(table, "components", out var comps)) step.Components = comps;
                 if (TryString(table, "repo_name", out string? rn)) step.RepoName = rn;
                 break;

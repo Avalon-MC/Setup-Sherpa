@@ -4,8 +4,14 @@ using SetupSherpa.Core.Manifest;
 
 /// <summary>
 /// Adds a custom Debian repository: installs the gpg keyring, then writes a
-/// <c>.sources</c> file under <c>/etc/apt/sources.list.d/</c>. Idempotency:
-/// if the sources file already exists, the step is skipped.
+/// deb822 <c>.sources</c> file under <c>/etc/apt/sources.list.d/</c>.
+/// Idempotency: if the sources file already exists, the step is skipped.
+///
+/// The deb822 block is faithful to real Debian repo layouts (e.g. Docker's):
+/// <c>Suites</c> is the distribution/version path, <c>Components</c> is the
+/// archive subdirectory, and <c>Architectures</c> is optional. Suites defaults
+/// to <c>$VERSION_CODENAME</c> (which apt expands — never a shell, so it's
+/// literal and safe); Components defaults to <c>main</c>.
 /// </summary>
 public sealed class RepoExecutor : IStepExecutor
 {
@@ -20,10 +26,11 @@ public sealed class RepoExecutor : IStepExecutor
         if (File.Exists(sourcesPath))
             return StepResult.Skipped($"repository '{name}' already configured ({sourcesPath}).");
 
+        string? keyringPath = null;
         if (!string.IsNullOrWhiteSpace(ctx.Step.Keyring))
         {
-            // Add the gpg key via apt-key-free mechanism (a keyring in trusted.gpg.d).
-            var keyringPath = $"/usr/share/keyrings/{name}-archive-keyring.gpg";
+            // Add the gpg key via apt-key-free mechanism (a keyring in /usr/share/keyrings).
+            keyringPath = $"/usr/share/keyrings/{name}-archive-keyring.gpg";
             if (!File.Exists(keyringPath))
             {
                 bool fetched = await ctx.RunOkAsync("curl", new[]
@@ -33,15 +40,9 @@ public sealed class RepoExecutor : IStepExecutor
                 if (!fetched)
                     throw new StepFailedException($"failed to fetch repository keyring from {ctx.Step.Keyring}");
             }
-            // Write the deb822 .sources file with signed-by pointing at the keyring.
-            WriteSourcesFile(name, ctx.Step.Source!, ctx.Step.Components, keyringPath);
-        }
-        else
-        {
-            // No keyring: a plain deb line.
-            WriteSourcesFile(name, ctx.Step.Source!, ctx.Step.Components, null);
         }
 
+        WriteSourcesFile(ctx, name, keyringPath);
         return StepResult.Completed();
     }
 
@@ -52,16 +53,42 @@ public sealed class RepoExecutor : IStepExecutor
         return host.Split('.')[0];
     }
 
-    private static void WriteSourcesFile(string name, string source, IReadOnlyList<string> components, string? keyringPath)
+    private static void WriteSourcesFile(StepContext ctx, string name, string? keyringPath)
     {
-        string path = $"/etc/apt/sources.list.d/{name}.sources";
+        string sourcesPath = $"/etc/apt/sources.list.d/{name}.sources";
+        File.WriteAllText(sourcesPath, BuildDeb822Block(ctx.Step.Source!, ctx.Step.Suite,
+            ctx.Step.Components, ctx.Step.Architectures, keyringPath));
+    }
+
+    /// <summary>
+    /// Renders the deb822 <c>.sources</c> block for a repo step. Pure and
+    /// testable (no file I/O). Faithful to real Debian repo layouts:
+    /// Suites = distribution/version path, Components = archive subdirectory,
+    /// Architectures = optional, Signed-By = keyring path.
+    /// </summary>
+    public static string BuildDeb822Block(
+        string source, string? suite, IReadOnlyList<string> components, string? architectures, string? keyringPath)
+    {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Types: deb");
         sb.AppendLine($"URIs: {source}");
-        var suites = components.Count > 0 ? components : new[] { "stable" };
-        sb.AppendLine($"Suites: {string.Join(' ', suites)}");
+
+        // Suites is the repo's distribution/version path (e.g. trixie, or
+        // $VERSION_CODENAME which apt expands). Never a shell — it's written
+        // literally into the file, so $VERSION_CODENAME is safe (D5).
+        sb.AppendLine($"Suites: {suite ?? "$VERSION_CODENAME"}");
+
+        // Components is the archive subdirectory (e.g. main, stable, contrib).
+        var comps = components.Count > 0 ? components : new[] { "main" };
+        sb.AppendLine($"Components: {string.Join(' ', comps)}");
+
+        // Architectures is optional (deb822 defaults to the system architecture).
+        if (!string.IsNullOrWhiteSpace(architectures))
+            sb.AppendLine($"Architectures: {architectures}");
+
         if (keyringPath is not null)
             sb.AppendLine($"Signed-By: {keyringPath}");
-        File.WriteAllText(path, sb.ToString());
+
+        return sb.ToString();
     }
 }
