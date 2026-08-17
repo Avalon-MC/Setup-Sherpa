@@ -14,7 +14,9 @@ Put your manifests in a folder, then run:
 sudo sherpa run ./setup
 ```
 
-Sherpa reads every `.toml` file in the folder, works out the install order, and runs the steps one at a time — root steps as root, user steps as you.
+Sherpa reads every `.toml` file in the folder (including up to two levels of
+sub-folders), works out the install order, and runs the steps one at a time —
+root steps as root, user steps as you.
 
 ## A manifest
 
@@ -57,6 +59,11 @@ chmod 700 .
 | `docker-volume` | root | Create a Docker volume |
 | `compose` | root | Deploy a compose project with `docker compose` |
 | `bash` | you | Run a custom bash script |
+| `wait` | you | Print a message and pause until you press Enter |
+| `env-input` | you | Prompt for a value and store it in `.env` |
+| `copy` | you | Copy a file or folder into place |
+| `extract` | you | Unpack a `.tar.gz` archive into a folder |
+| `systemd` | root | Install a systemd unit (and optionally enable/start it) |
 
 ## How it works
 
@@ -68,8 +75,8 @@ chmod 700 .
 
 ## `.env` secrets
 
-A single `.env` next to your manifests holds values for docker steps. Reference
-them with `expansionTokens` on a `docker-run`/`docker-volume` step:
+A single `.env` next to your manifests holds values for steps. Reference them
+with `expansionTokens` on a `docker-run`, `docker-volume`, or `bash` step:
 
 ```toml
 [[step]]
@@ -78,10 +85,12 @@ expansionTokens = ["MSSQL_SA_PASSWORD"]
 command = "-d -e MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD --name sql1 mcr/sql:latest"
 ```
 
-Sherpa substitutes `$VAR`/`${VAR}` for the listed tokens from `.env` (created blank
-if missing), never commits it (see `.gitignore`), and hides the values from any
-output. Compose steps get `.env` via `--env-file` for YAML interpolation. Unlisted
-`$VAR` is left literal; a listed-but-missing token stops the run.
+Sherpa substitutes `$VAR`/`${VAR}` for the listed tokens from `.env` (values are
+shell-quoted for `bash` steps), never commits it (see `.gitignore`), and hides
+the values from any output. Compose steps get `.env` via `--env-file` for YAML
+interpolation when the file exists. Unlisted `$VAR` is left literal; a
+listed-but-missing token stops the run. An `env-input` step writes a value you
+type into `.env` so later steps can use it.
 
 ## Design decisions
 
@@ -109,8 +118,8 @@ Each `[[step]]` has a shared core plus type-specific fields. The `type` is alway
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `type` | string | yes | `apt`, `repo`, `docker-run`, `docker-volume`, `compose`, `bash` |
-| `privilege` | string | no | `root` or `user`. Defaults per type: `bash` → `user`; all others → `root` |
+| `type` | string | yes | `apt`, `repo`, `docker-run`, `docker-volume`, `compose`, `bash`, `wait`, `env-input`, `copy`, `extract`, `systemd` |
+| `privilege` | string | no | `root` or `user`. Defaults per type: `bash`/`wait`/`env-input`/`copy`/`extract` → `user`; `apt`/`repo`/`docker-run`/`docker-volume`/`compose`/`systemd` → `root` |
 | `workdir` | string | no | Overrides the manifest `workdir`. `~/...` → user's home; absolute → `mkdir -p` on demand; relative → resolved against the manifest's directory |
 | `interactive` | bool | no | Declares the step needs a human at the terminal |
 
@@ -123,4 +132,9 @@ Each `[[step]]` has a shared core plus type-specific fields. The `type` is alway
 | `docker-run` | `command` (string, required) — raw docker args, no shell expansion; `expansionTokens` (array) — `.env` keys to substitute into the command |
 | `docker-volume` | `command` (string, required) — raw docker args; `expansionTokens` (array) — `.env` keys to substitute |
 | `compose` | `project` (string, required), `file` (string, required — path or `@url:https://...`) |
-| `bash` | `script` (string, required) |
+| `bash` | `script` (string, required); `expansionTokens` (array) — `.env` keys to substitute (shell-quoted) |
+| `wait` | `message` (string, required) |
+| `env-input` | `variable` (string, required), `secret` (bool, default `false` — set `true` to suppress echo) |
+| `copy` | `src` (string, required — relative to the manifest's folder), `dest` (string, required) |
+| `extract` | `archive` (string, required — relative to the manifest's folder), `dest` (string, required) |
+| `systemd` | `unit` (string, required — path to the `.service` file), `name` (string, service name), `enable` (bool), `start` (bool) |

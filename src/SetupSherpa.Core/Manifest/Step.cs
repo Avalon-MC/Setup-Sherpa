@@ -61,7 +61,7 @@ public sealed class Step
 
     // --- env-input ---
     public string? Variable { get; set; }
-    public bool Secret { get; set; } = true;
+    public bool Secret { get; set; } = false;
 
     // --- copy ---
     public string? Src { get; set; }
